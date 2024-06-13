@@ -16,6 +16,9 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.linear_model import LogisticRegression
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
 import streamlit as st
@@ -26,13 +29,11 @@ nltk.download('wordnet')
 nltk.download('punkt')
 nltk.download('averaged_perceptron_tagger')
 
-# Load your pre-trained model (example)
-# Replace this with your actual model loading code
-def load_model():
-    model = LogisticRegression()  # Example model, replace with your model
-    return model
+# Data Loading
+kolom_name = ['tweet id', 'entity', 'sentiment', 'tweet content']
+df = pd.read_csv("twitter_validation.csv", names=kolom_name, header=None)
 
-# Text preprocessing function
+# Fungsi pemrosesan teks
 def get_wordnet_pos(pos_tag):
     if pos_tag.startswith('J'):
         return wordnet.ADJ
@@ -57,46 +58,60 @@ def text_preprocessing(text):
     text_lem.append((entity,))
     return text_lem
 
-# Load model and vectorizer
-model = load_model()  # Replace with your model loading function
+# Load models
+def load_models():
+    models = [
+        ("Logistic Regression", LogisticRegression()),
+        ("KNeighbors Classifier", KNeighborsClassifier()),
+        ("Decision Tree Classifier", DecisionTreeClassifier()),
+        ("Random Forest Classifier", RandomForestClassifier())
+    ]
+    return models
 
-# Example training data
-train_data = ["Positive Overwatch is a great game.", "Negative Overwatch is boring."]
-train_labels = ["Positive", "Negative"]
+models = load_models()
 
-# Combine text_preprocessing, CountVectorizer and TfidfTransformer into pipeline
-pipeline = Pipeline([
+# Data latih contoh
+train_data = df['tweet content'].tolist()
+train_labels = df['sentiment']
+
+# Membuat pipeline untuk setiap model
+pipelines = [(name, Pipeline([
     ('bow', CountVectorizer(analyzer=text_preprocessing)),
     ('tfidf', TfidfTransformer()),
     ('classifier', model)
-])
+])) for name, model in models]
 
-# Fit pipeline on the training data
-pipeline.fit(train_data, train_labels)
+# Melatih pipeline pada data latih
+for name, pipeline in pipelines:
+    pipeline.fit(train_data, train_labels)
 
-# Streamlit App
-st.title('Sentiment Analysis App')
-st.write('Welcome to my sentiment analysis app!')
+# Aplikasi Streamlit
+st.title('Aplikasi Analisis Sentimen')
+st.write('Selamat datang di aplikasi analisis sentimen saya!')
 
-# Form to input text
-st.subheader('Enter Text for Sentiment Analysis')
+# Form untuk memasukkan teks
+st.subheader('Masukkan Teks untuk Analisis Sentimen')
 form = st.form(key='sentiment-form')
-user_input = form.text_area('Enter your text')
-submit_button = form.form_submit_button('Analyze Sentiment')
+user_input = form.text_area('Masukkan teks Anda')
+model_choice = form.selectbox('Pilih Model', [name for name, model in models])
+submit_button = form.form_submit_button('Analisis Sentimen')
 
-# Processing user input
+# Memproses input pengguna
 if submit_button:
     if user_input:
-        # Predict sentiment
-        prediction = pipeline.predict([user_input])[0]
-        
-        # Display result
-        st.subheader('Sentiment Prediction:')
-        st.write(f'Text: {user_input}')
-        st.write(f'Predicted Sentiment: {prediction}')
-    else:
-        st.warning('Please enter some text.')
+        # Memilih pipeline berdasarkan pilihan model
+        selected_pipeline = dict(pipelines)[model_choice]
 
-# Footer or additional information
+        # Memprediksi sentimen
+        prediction = selected_pipeline.predict([user_input])[0]
+        
+        # Menampilkan hasil
+        st.subheader('Prediksi Sentimen:')
+        st.write(f'Teks: {user_input}')
+        st.write(f'Sentimen yang Diprediksi: {prediction}')
+    else:
+        st.warning('Silakan masukkan teks.')
+
+# Footer atau informasi tambahan
 st.write('---')
-st.write('Note: This is a simple example of sentiment analysis. Adjustments may be needed for your specific use case.')
+st.write('Catatan: Ini adalah contoh sederhana analisis sentimen. Penyesuaian mungkin diperlukan untuk kasus penggunaan spesifik Anda.')
