@@ -1,0 +1,5 @@
+Classifier,Accuracy,Accuracy on Trainset
+DecisionTreeClassifier,1.0,1.0
+RandomForestClassifier,1.0,1.0
+LogisticRegression,0.974,0.974
+KNeighborsClassifier,0.606,0.606
